@@ -50,7 +50,7 @@
   editorTextarea.addEventListener('input', () => {
     isUnsaved = true;
     document.getElementById('unsaved-indicator').style.display = '';
-    document.getElementById('btn-save-file').style.display = '';
+    document.getElementById('btn-save-file').classList.remove('disabled');
     // Debounced live preview
     clearTimeout(editorDebounce);
     editorDebounce = setTimeout(() => {
@@ -175,7 +175,7 @@
     }
     isUnsaved = false;
     document.getElementById('unsaved-indicator').style.display = 'none';
-    document.getElementById('btn-save-file').style.display = 'none';
+    document.getElementById('btn-save-file').classList.add('disabled');
 
     // Update sidebar highlight (no callback, breaks infinite loop)
     Sidebar.highlightFile(filePath);
@@ -265,10 +265,13 @@
   function openEditor() {
     isEditorOpen = true;
     const editorPanel = document.getElementById('editor-panel');
+    const editorResizeHandle = document.getElementById('editor-resize-handle');
     const contentBody = document.querySelector('.content-body');
     editorPanel.style.display = 'flex';
+    editorResizeHandle.style.display = '';
     contentBody.classList.add('editing');
     document.getElementById('btn-toggle-edit').classList.add('editing');
+    document.getElementById('btn-save-file').classList.toggle('disabled', !isUnsaved);
     document.getElementById('editor-content').value = rawContent;
     document.getElementById('editor-content').focus();
   }
@@ -276,10 +279,15 @@
   function closeEditor() {
     isEditorOpen = false;
     const editorPanel = document.getElementById('editor-panel');
+    const editorResizeHandle = document.getElementById('editor-resize-handle');
     const contentBody = document.querySelector('.content-body');
     editorPanel.style.display = 'none';
+    editorResizeHandle.style.display = 'none';
     contentBody.classList.remove('editing');
     document.getElementById('btn-toggle-edit').classList.remove('editing');
+    // Reset flex widths when closing
+    document.getElementById('markdown-content').style.flex = '';
+    editorPanel.style.flex = '';
   }
 
   async function saveFile() {
@@ -292,7 +300,7 @@
       justSaved = true;
       setTimeout(() => { justSaved = false; }, 1000);
       document.getElementById('unsaved-indicator').style.display = 'none';
-      document.getElementById('btn-save-file').style.display = 'none';
+      document.getElementById('btn-save-file').classList.add('disabled');
     } else {
       alert('儲存失敗：' + result.error);
     }
@@ -319,6 +327,45 @@
     handle.style.display = isHidden ? '' : 'none';
     btn.classList.toggle('active', isHidden);
   }
+
+  // ── Editor resize handle (viewer ↔ editor split) ──
+
+  (() => {
+    const handle = document.getElementById('editor-resize-handle');
+    let dragging = false;
+
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      dragging = true;
+      handle.classList.add('resizing');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const contentBody = document.querySelector('.content-body');
+      const rect = contentBody.getBoundingClientRect();
+      const totalWidth = rect.width;
+      const viewerWidth = e.clientX - rect.left;
+      const minViewer = 200;
+      const minEditor = 250;
+      const clampedViewer = Math.max(minViewer, Math.min(viewerWidth, totalWidth - minEditor - 4));
+
+      const markdownContent = document.getElementById('markdown-content');
+      const editorPanel = document.getElementById('editor-panel');
+      markdownContent.style.flex = `0 0 ${clampedViewer}px`;
+      editorPanel.style.flex = `1 1 0`;
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      handle.classList.remove('resizing');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    });
+  })();
 
   // ── Zoom ──
 

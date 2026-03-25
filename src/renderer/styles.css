@@ -623,7 +623,22 @@ html, body {
 /* When editor is open, remove max-width constraint */
 .content-body.editing .markdown-content {
   max-width: none;
-  border-right: 1px solid var(--border-color);
+  flex: 1;
+  min-width: 200px;
+}
+
+/* === Editor Resize Handle (between viewer and editor) === */
+.editor-resize-handle {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.editor-resize-handle:hover,
+.editor-resize-handle.resizing {
+  background: var(--accent);
 }
 
 /* === Editor Panel === */
@@ -631,8 +646,7 @@ html, body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 350px;
-  max-width: 50%;
+  min-width: 250px;
 }
 
 .editor-panel-header {
@@ -689,12 +703,21 @@ html, body {
   padding: 5px 12px;
   border-radius: var(--radius-sm);
   font-family: var(--font-family);
-  transition: background 0.15s;
+  transition: background 0.15s, opacity 0.15s;
   margin-right: 4px;
 }
 
 .btn-save:hover {
   background: #1557b0;
+}
+
+.btn-save.disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn-save.disabled:hover {
+  background: var(--accent);
 }
 
 .unsaved-indicator {

@@ -91,13 +91,15 @@
           </div>
           <div class="content-body">
             <div id="markdown-content" class="markdown-content"></div>
+            <!-- Editor Resize Handle (between viewer and editor) -->
+            <div id="editor-resize-handle" class="editor-resize-handle" style="display:none;"></div>
             <!-- Editor Panel (right side, hidden by default) -->
             <div id="editor-panel" class="editor-panel" style="display:none;">
               <div class="editor-panel-header">
                 <span>📝 編輯器</span>
                 <span id="unsaved-indicator" class="unsaved-indicator" style="display:none;">● 未儲存</span>
                 <div style="flex:1;"></div>
-                <button id="btn-save-file" class="btn-save" title="儲存 (Ctrl+S)" style="display:none;">💾 儲存</button>
+                <button id="btn-save-file" class="btn-save" title="儲存 (Ctrl+S)">💾 儲存</button>
                 <button id="btn-close-editor" class="btn-close" title="收折編輯器">✕</button>
               </div>
               <textarea id="editor-content" class="editor-content" spellcheck="false"></textarea>
