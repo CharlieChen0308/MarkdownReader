@@ -420,31 +420,44 @@
     });
   })();
 
-  // ── Zoom ──
+  // ── Zoom (stepped via menu + smooth via Ctrl+wheel) ──
+
+  const ZOOM_MIN = -10;
+  const ZOOM_MAX = 20;
+  const BASE_FONT_SIZE = 15;
+
+  function applyZoom() {
+    const content = document.getElementById('markdown-content');
+    content.style.fontSize = (BASE_FONT_SIZE + zoomLevel) + 'px';
+    localStorage.setItem(ZOOM_KEY, String(zoomLevel));
+  }
 
   function handleZoom(direction) {
-    const content = document.getElementById('markdown-content');
-    const baseFontSize = 15;
-
     if (direction === 'in') {
-      zoomLevel = Math.min(zoomLevel + 1, 10);
+      zoomLevel = Math.min(zoomLevel + 2, ZOOM_MAX);
     } else if (direction === 'out') {
-      zoomLevel = Math.max(zoomLevel - 1, -5);
+      zoomLevel = Math.max(zoomLevel - 2, ZOOM_MIN);
     } else {
       zoomLevel = 0;
     }
-
-    content.style.fontSize = (baseFontSize + zoomLevel * 2) + 'px';
-    localStorage.setItem(ZOOM_KEY, String(zoomLevel));
+    applyZoom();
   }
+
+  // Ctrl + mouse wheel: smooth continuous zoom
+  document.getElementById('markdown-content').addEventListener('wheel', (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -1 : 1;
+    zoomLevel = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoomLevel + delta));
+    applyZoom();
+  }, { passive: false });
 
   function loadZoomLevel() {
     try {
       const saved = localStorage.getItem(ZOOM_KEY);
       if (saved !== null) {
-        zoomLevel = parseInt(saved, 10) || 0;
-        const content = document.getElementById('markdown-content');
-        content.style.fontSize = (15 + zoomLevel * 2) + 'px';
+        zoomLevel = parseFloat(saved) || 0;
+        applyZoom();
       }
     } catch { /* ignore */ }
   }
