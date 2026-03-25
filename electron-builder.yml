@@ -1,0 +1,19 @@
+npmRebuild: false
+appId: com.tiremaster.markdown-reader
+productName: MarkdownReader
+directories:
+  output: dist
+files:
+  - src/**/*
+  - assets/**/*
+  - package.json
+  - node_modules/**/*
+win:
+  target:
+    - target: dir
+    - target: portable
+  sign: false
+  signAndEditExecutable: false
+  icon: null
+portable:
+  artifactName: MarkdownReader-Portable.exe

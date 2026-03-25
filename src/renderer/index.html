@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarkdownReader</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="../../node_modules/xterm/css/xterm.css">
+</head>
+<body>
+  <!-- Welcome Screen -->
+  <div id="welcome-screen" class="welcome-screen">
+    <div class="welcome-content">
+      <div class="welcome-icon">📖</div>
+      <h1>MarkdownReader</h1>
+      <p class="welcome-subtitle">輕鬆瀏覽 Markdown 文件</p>
+      <button id="btn-open-folder" class="btn-primary">
+        📂 選擇資料夾開始閱讀
+      </button>
+      <div id="recent-folders" class="recent-folders" style="display:none;">
+        <p class="recent-title">最近開啟：</p>
+        <div id="recent-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="main-app" class="main-app" style="display:none;">
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button id="btn-toggle-sidebar" class="toolbar-btn" title="顯示/隱藏側邊欄 (Ctrl+B)">☰</button>
+      <button id="btn-switch-folder" class="toolbar-btn" title="切換資料夾">📂 切換資料夾</button>
+      <div class="toolbar-separator"></div>
+      <button id="btn-toggle-search" class="toolbar-btn" title="搜尋">🔍 搜尋</button>
+      <button id="btn-toggle-bookmarks" class="toolbar-btn" title="書籤">⭐ 書籤</button>
+      <div class="toolbar-spacer"></div>
+      <span id="current-folder-name" class="toolbar-folder-name"></span>
+    </div>
+
+    <div class="app-body">
+      <!-- Sidebar -->
+      <div id="sidebar" class="sidebar">
+        <!-- Search Panel (hidden by default) -->
+        <div id="search-panel" class="sidebar-panel" style="display:none;">
+          <div class="panel-header">
+            <span>🔍 全文搜尋</span>
+            <button id="btn-close-search" class="btn-close">✕</button>
+          </div>
+          <input type="text" id="search-input" class="search-input" placeholder="輸入搜尋關鍵字...">
+          <div id="search-results" class="search-results"></div>
+        </div>
+
+        <!-- File Tree (top priority) -->
+        <div id="file-tree-panel" class="sidebar-panel">
+          <div class="panel-header"><span><span class="collapse-arrow">▾</span> 📁 目錄</span></div>
+          <div id="file-tree" class="file-tree"></div>
+        </div>
+
+        <!-- Quick Access -->
+        <div id="quick-access-panel" class="sidebar-panel sidebar-nav-panel">
+          <div class="panel-header">
+            <span><span class="collapse-arrow">▾</span> 📌 快速存取</span>
+            <button id="btn-pin-folder" class="btn-pin" title="釘選目前資料夾">＋</button>
+          </div>
+          <div id="quick-access-list" class="nav-list"></div>
+        </div>
+
+        <!-- Bookmarks Panel -->
+        <div id="bookmarks-panel" class="sidebar-panel">
+          <div class="panel-header"><span><span class="collapse-arrow">▾</span> ⭐ 書籤</span></div>
+          <div id="bookmarks-list" class="bookmarks-list"></div>
+        </div>
+      </div>
+
+      <!-- Resize Handle -->
+      <div id="resize-handle" class="resize-handle"></div>
+
+      <!-- Content Wrapper (vertical flex for content + terminal) -->
+      <div class="content-wrapper">
+        <!-- Content Area -->
+        <div id="content-area" class="content-area">
+          <div id="content-placeholder" class="content-placeholder">
+            <p>← 從左側目錄選擇一個檔案開始閱讀</p>
+          </div>
+          <div id="content-header" class="content-header" style="display:none;">
+            <span id="content-file-path" class="content-file-path"></span>
+            <div class="content-header-actions">
+              <button id="btn-toggle-edit" class="btn-edit" title="編輯模式 (Ctrl+Shift+E)">✏️</button>
+              <button id="btn-bookmark-current" class="btn-bookmark" title="加入書籤">☆</button>
+            </div>
+          </div>
+          <div class="content-body">
+            <div id="markdown-content" class="markdown-content"></div>
+            <!-- Editor Panel (right side, hidden by default) -->
+            <div id="editor-panel" class="editor-panel" style="display:none;">
+              <div class="editor-panel-header">
+                <span>📝 編輯器</span>
+                <span id="unsaved-indicator" class="unsaved-indicator" style="display:none;">● 未儲存</span>
+                <div style="flex:1;"></div>
+                <button id="btn-save-file" class="btn-save" title="儲存 (Ctrl+S)" style="display:none;">💾 儲存</button>
+                <button id="btn-close-editor" class="btn-close" title="收折編輯器">✕</button>
+              </div>
+              <textarea id="editor-content" class="editor-content" spellcheck="false"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Terminal Resize Handle -->
+        <div id="terminal-resize-handle" class="terminal-resize-handle" style="display:none;"></div>
+
+        <!-- Terminal Panel (hidden by default) -->
+        <div id="terminal-panel" class="terminal-panel" style="display:none;">
+          <div class="terminal-header">
+            <div class="terminal-tabs" id="terminal-tabs"></div>
+            <div class="terminal-header-actions">
+              <button id="btn-add-terminal" class="btn-terminal-action" title="新增終端">＋</button>
+              <button id="btn-terminal-settings" class="btn-terminal-action" title="終端機設定">⚙</button>
+              <button id="btn-close-terminal" class="btn-close">✕</button>
+            </div>
+          </div>
+          <div id="terminal-containers" class="terminal-containers"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terminal Settings Dialog -->
+  <div id="terminal-settings-dialog" class="dialog-overlay" style="display:none;">
+    <div class="dialog-box ts-dialog">
+      <div class="ts-dialog-header">
+        <span class="ts-dialog-title">終端機設定</span>
+        <button id="btn-close-terminal-settings" class="btn-close">✕</button>
+      </div>
+      <div class="ts-dialog-body">
+        <!-- Section: Project -->
+        <div class="ts-section">
+          <div class="ts-section-title">
+            <span class="ts-section-icon">📁</span> 專案設定
+          </div>
+          <div class="ts-field">
+            <label for="setting-cwd">啟動目錄</label>
+            <div class="ts-input-with-btn">
+              <input type="text" id="setting-cwd" class="ts-input" placeholder="使用目前開啟的資料夾">
+              <button id="btn-browse-cwd" class="ts-browse-btn" title="瀏覽">📂</button>
+            </div>
+            <span class="ts-hint">留空時自動使用目前開啟的資料夾路徑</span>
+          </div>
+          <div class="ts-field">
+            <label for="setting-env">環境變數</label>
+            <textarea id="setting-env" class="ts-textarea" rows="3" placeholder="KEY=VALUE（每行一組，留空使用系統預設）"></textarea>
+            <span class="ts-hint">格式：每行一組 KEY=VALUE，例如 NODE_ENV=development</span>
+          </div>
+        </div>
+
+        <!-- Section: Shell -->
+        <div class="ts-section">
+          <div class="ts-section-title">
+            <span class="ts-section-icon">🐚</span> Shell 設定
+          </div>
+          <div class="ts-field">
+            <label for="setting-shell">Shell 路徑</label>
+            <input type="text" id="setting-shell" class="ts-input" placeholder="powershell.exe">
+            <span class="ts-hint">例如：powershell.exe、cmd.exe、C:\Program Files\PowerShell\7\pwsh.exe</span>
+          </div>
+          <div class="ts-field">
+            <label for="setting-tabname">預設標籤頁名稱</label>
+            <input type="text" id="setting-tabname" class="ts-input" placeholder="Terminal">
+            <span class="ts-hint">新建終端分頁時使用的名稱前綴</span>
+          </div>
+          <div class="ts-field">
+            <label for="setting-autorun">開啟時自動執行指令</label>
+            <input type="text" id="setting-autorun" class="ts-input" placeholder="留空表示不自動執行">
+          </div>
+        </div>
+
+        <!-- Section: Font -->
+        <div class="ts-section">
+          <div class="ts-section-title">
+            <span class="ts-section-icon">🔤</span> 字型設定
+          </div>
+          <div class="ts-field-row">
+            <div class="ts-field ts-field-grow">
+              <label for="setting-fontfamily">字型</label>
+              <select id="setting-fontfamily" class="ts-select">
+                <option value="Cascadia Code">Cascadia Code</option>
+                <option value="Consolas">Consolas</option>
+                <option value="JetBrains Mono">JetBrains Mono</option>
+                <option value="Fira Code">Fira Code</option>
+                <option value="Source Code Pro">Source Code Pro</option>
+                <option value="Courier New">Courier New</option>
+              </select>
+            </div>
+            <div class="ts-field ts-field-sm">
+              <label for="setting-fontsize">大小</label>
+              <input type="number" id="setting-fontsize" class="ts-input" min="8" max="32" value="14">
+            </div>
+            <div class="ts-field ts-field-sm">
+              <label for="setting-lineheight">行高</label>
+              <input type="number" id="setting-lineheight" class="ts-input" min="0.8" max="2.0" step="0.1" value="1.2">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Appearance -->
+        <div class="ts-section">
+          <div class="ts-section-title">
+            <span class="ts-section-icon">🎨</span> 外觀設定
+          </div>
+          <div class="ts-field-row">
+            <div class="ts-field ts-field-grow">
+              <label for="setting-cursor-style">游標形狀</label>
+              <select id="setting-cursor-style" class="ts-select">
+                <option value="block">█ 區塊</option>
+                <option value="underline">▁ 底線</option>
+                <option value="bar">▏ 直線</option>
+              </select>
+            </div>
+            <div class="ts-field ts-field-grow">
+              <label for="setting-theme">配色主題</label>
+              <select id="setting-theme" class="ts-select">
+                <option value="dark">🌙 暗色</option>
+                <option value="monokai">🟣 Monokai</option>
+                <option value="dracula">🧛 Dracula</option>
+                <option value="nord">❄️ Nord</option>
+                <option value="solarized">☀️ Solarized Dark</option>
+              </select>
+            </div>
+          </div>
+          <div class="ts-check-group">
+            <label class="ts-checkbox">
+              <input type="checkbox" id="setting-cursor-blink" checked>
+              <span class="ts-check-mark"></span>
+              游標閃爍
+            </label>
+            <label class="ts-checkbox">
+              <input type="checkbox" id="setting-scrollback">
+              <span class="ts-check-mark"></span>
+              無限制捲動緩衝區（預設 1000 行）
+            </label>
+          </div>
+          <!-- Theme Preview -->
+          <div id="ts-theme-preview" class="ts-theme-preview">
+            <span class="ts-preview-prompt">PS C:\&gt;</span> <span class="ts-preview-cmd">Get-Process</span>
+            <br><span class="ts-preview-output">Handles  NPM(K)  PM(K)  WS(K)  CPU(s)   Id  ProcessName</span>
+            <br><span class="ts-preview-highlight">    234      18  12456  28340    2.31  1024  node</span>
+          </div>
+        </div>
+      </div>
+      <div class="ts-dialog-footer">
+        <button id="btn-terminal-settings-reset" class="btn-secondary btn-sm">恢復預設</button>
+        <div style="flex:1;"></div>
+        <button id="btn-terminal-settings-cancel" class="btn-secondary btn-sm">取消</button>
+        <button id="btn-terminal-settings-save" class="btn-primary btn-sm">儲存設定</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="viewer.js"></script>
+  <script src="sidebar.js"></script>
+  <script src="search.js"></script>
+  <script src="bookmarks.js"></script>
+  <script src="terminal.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
