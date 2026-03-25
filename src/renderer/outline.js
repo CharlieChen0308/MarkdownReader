@@ -1,19 +1,12 @@
 /**
- * Outline — document heading outline / TOC (like OneNote)
+ * Outline — document heading outline / TOC (tab-based, like OneNote)
  */
 const Outline = (() => {
   let outlineList = null;
   let contentEl = null;
-  let isVisible = false;
 
   function init() {
     outlineList = document.getElementById('outline-list');
-    const panel = document.getElementById('outline-panel');
-
-    // Toggle collapse
-    panel.querySelector('.panel-header').addEventListener('click', () => {
-      panel.classList.toggle('collapsed');
-    });
   }
 
   /**
@@ -45,7 +38,7 @@ const Outline = (() => {
       item.className = `outline-item outline-level-${indent}`;
       item.dataset.index = index;
 
-      const text = h.textContent.replace(/[\u2705\u2757\u26A0\uFE0F]/g, '').trim(); // strip emoji
+      const text = h.textContent.replace(/[\u2705\u2757\u26A0\uFE0F]/g, '').trim();
       item.textContent = text;
       item.title = text;
 
@@ -57,9 +50,6 @@ const Outline = (() => {
 
       outlineList.appendChild(item);
     });
-
-    // Show the outline panel
-    document.getElementById('outline-panel').style.display = '';
   }
 
   function setActive(index) {
@@ -68,7 +58,6 @@ const Outline = (() => {
     const target = outlineList.querySelector(`.outline-item[data-index="${index}"]`);
     if (target) {
       target.classList.add('active');
-      // Scroll outline list to show active item
       target.scrollIntoView({ block: 'nearest' });
     }
   }
@@ -85,7 +74,6 @@ const Outline = (() => {
     let activeIndex = 0;
 
     for (let i = 0; i < headings.length; i++) {
-      // Use offsetTop relative to the scrollable container
       const headingTop = headings[i].offsetTop - contentEl.offsetTop;
       if (headingTop <= scrollTop + 60) {
         activeIndex = i;
@@ -102,7 +90,6 @@ const Outline = (() => {
    */
   function clear() {
     if (outlineList) outlineList.innerHTML = '';
-    document.getElementById('outline-panel').style.display = 'none';
   }
 
   return { init, update, syncWithScroll, clear };

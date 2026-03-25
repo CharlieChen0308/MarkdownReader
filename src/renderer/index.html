@@ -33,7 +33,6 @@
       <div class="toolbar-separator"></div>
       <button id="btn-toggle-search" class="toolbar-btn" title="搜尋">🔍 搜尋</button>
       <button id="btn-toggle-bookmarks" class="toolbar-btn" title="書籤">⭐ 書籤</button>
-      <button id="btn-toggle-outline" class="toolbar-btn" title="大綱">📑 大綱</button>
       <div class="toolbar-spacer"></div>
       <span id="current-folder-name" class="toolbar-folder-name"></span>
     </div>
@@ -51,10 +50,20 @@
           <div id="search-results" class="search-results"></div>
         </div>
 
-        <!-- File Tree (top priority) -->
-        <div id="file-tree-panel" class="sidebar-panel">
-          <div class="panel-header"><span><span class="collapse-arrow">▾</span> 📁 目錄</span></div>
+        <!-- Tab bar: 目錄 / 大綱 -->
+        <div class="sidebar-tabs">
+          <button class="sidebar-tab active" data-tab="file-tree-panel">📁 目錄</button>
+          <button class="sidebar-tab" data-tab="outline-panel">📑 大綱</button>
+        </div>
+
+        <!-- File Tree -->
+        <div id="file-tree-panel" class="sidebar-tab-content active">
           <div id="file-tree" class="file-tree"></div>
+        </div>
+
+        <!-- Outline Panel (document TOC) -->
+        <div id="outline-panel" class="sidebar-tab-content">
+          <div id="outline-list" class="outline-list"></div>
         </div>
 
         <!-- Quick Access -->
@@ -64,12 +73,6 @@
             <button id="btn-pin-folder" class="btn-pin" title="釘選目前資料夾">＋</button>
           </div>
           <div id="quick-access-list" class="nav-list"></div>
-        </div>
-
-        <!-- Outline Panel (document TOC) -->
-        <div id="outline-panel" class="sidebar-panel" style="display:none;">
-          <div class="panel-header"><span><span class="collapse-arrow">▾</span> 📑 大綱</span></div>
-          <div id="outline-list" class="outline-list"></div>
         </div>
 
         <!-- Bookmarks Panel -->

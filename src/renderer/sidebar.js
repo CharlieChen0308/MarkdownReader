@@ -13,6 +13,7 @@ const Sidebar = (() => {
     onFolderSelect = folderCallback;
     setupResize();
     loadQuickAccess();
+    setupTabs();
     setupCollapsiblePanels();
 
     // Pin button
@@ -25,16 +26,42 @@ const Sidebar = (() => {
     });
   }
 
-  // ── Collapsible panels ──
+  // ── Sidebar Tabs (目錄 / 大綱) ──
+
+  const TAB_KEY = 'markdownreader-sidebar-tab';
+
+  function setupTabs() {
+    const tabs = document.querySelectorAll('.sidebar-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        switchTab(tab.dataset.tab);
+      });
+    });
+
+    // Restore saved tab
+    try {
+      const saved = localStorage.getItem(TAB_KEY);
+      if (saved) switchTab(saved);
+    } catch { /* ignore */ }
+  }
+
+  function switchTab(tabId) {
+    // Update tab buttons
+    document.querySelectorAll('.sidebar-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.tab === tabId);
+    });
+    // Update tab content
+    document.querySelectorAll('.sidebar-tab-content').forEach(c => {
+      c.classList.toggle('active', c.id === tabId);
+    });
+    localStorage.setItem(TAB_KEY, tabId);
+  }
+
+  // ── Collapsible panels (quick access, bookmarks) ──
 
   const COLLAPSE_KEY = 'markdownreader-collapsed-panels';
 
   function setupCollapsiblePanels() {
-    // File Tree header toggle
-    const ftHeader = document.querySelector('#file-tree-panel .panel-header');
-    ftHeader.style.cursor = 'pointer';
-    ftHeader.addEventListener('click', () => togglePanel('file-tree-panel'));
-
     // Quick Access header toggle
     const qaHeader = document.querySelector('#quick-access-panel .panel-header');
     qaHeader.style.cursor = 'pointer';
@@ -61,7 +88,7 @@ const Sidebar = (() => {
   }
 
   function saveCollapseState() {
-    const panels = ['file-tree-panel', 'quick-access-panel', 'bookmarks-panel'];
+    const panels = ['quick-access-panel', 'bookmarks-panel'];
     const collapsed = panels.filter(id => document.getElementById(id).classList.contains('collapsed'));
     localStorage.setItem(COLLAPSE_KEY, JSON.stringify(collapsed));
   }

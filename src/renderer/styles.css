@@ -535,6 +535,51 @@ html, body {
   color: #c00;
 }
 
+/* === Sidebar Tabs === */
+.sidebar-tabs {
+  display: flex;
+  background: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.sidebar-tab {
+  flex: 1;
+  padding: 8px 4px;
+  font-size: 13px;
+  font-family: var(--font-family);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  user-select: none;
+}
+
+.sidebar-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.sidebar-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Tab content panels */
+.sidebar-tab-content {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.sidebar-tab-content.active {
+  display: flex;
+}
+
 /* === Outline Panel === */
 .outline-list {
   overflow-y: auto;
@@ -579,14 +624,6 @@ html, body {
   padding: 8px 12px;
   font-size: 12px;
   color: var(--text-muted);
-}
-
-#outline-panel {
-  flex: 0 0 auto;
-  max-height: 40%;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
 }
 
 /* === Content Wrapper === */

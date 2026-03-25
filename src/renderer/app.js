@@ -49,15 +49,6 @@
   document.getElementById('btn-close-editor').addEventListener('click', closeEditor);
   document.getElementById('btn-save-file').addEventListener('click', saveFile);
 
-  // Outline toolbar toggle
-  document.getElementById('btn-toggle-outline').addEventListener('click', () => {
-    const panel = document.getElementById('outline-panel');
-    const btn = document.getElementById('btn-toggle-outline');
-    const isHidden = panel.style.display === 'none';
-    panel.style.display = isHidden ? '' : 'none';
-    btn.classList.toggle('active', isHidden);
-  });
-
   const editorTextarea = document.getElementById('editor-content');
   let editorDebounce = null;
   editorTextarea.addEventListener('input', () => {
@@ -133,6 +124,7 @@
     document.getElementById('content-header').style.display = 'none';
     document.getElementById('markdown-content').innerHTML = '';
     if (typeof Outline !== 'undefined') Outline.clear();
+
 
     // Scan directory and render tree
     const tree = await window.api.scanDirectory(folderPath);
