@@ -752,20 +752,18 @@ html, body {
   border-bottom: 1px solid var(--border-color);
   font-size: 13px;
   font-weight: 600;
-  min-width: 0;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.editor-panel-header > * {
   flex-shrink: 0;
 }
 
-.editor-panel-header > .unsaved-indicator {
-  flex-shrink: 1;
+.editor-panel-header > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+}
+
+.editor-panel-header > button {
+  flex-shrink: 0;
 }
 
 .editor-header-right {
