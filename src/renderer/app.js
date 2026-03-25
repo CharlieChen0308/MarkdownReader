@@ -15,6 +15,9 @@
   let isUnsaved = false;
   let justSaved = false; // Flag for file watcher integration
 
+  // Sync scroll state
+  let syncScrolling = false;
+
   // Init modules
   Viewer.init();
   const folderSelectHandler = (folderPath) => loadFolder(folderPath);
@@ -22,6 +25,7 @@
   Sidebar.init(onFileSelected, folderSelectHandler);
   Search.init(onFileSelected);
   Bookmarks.init(onFileSelected);
+  if (typeof Outline !== 'undefined') Outline.init();
 
   // Init terminal
   if (typeof Terminal !== 'undefined') Terminal.init();
@@ -45,6 +49,15 @@
   document.getElementById('btn-close-editor').addEventListener('click', closeEditor);
   document.getElementById('btn-save-file').addEventListener('click', saveFile);
 
+  // Outline toolbar toggle
+  document.getElementById('btn-toggle-outline').addEventListener('click', () => {
+    const panel = document.getElementById('outline-panel');
+    const btn = document.getElementById('btn-toggle-outline');
+    const isHidden = panel.style.display === 'none';
+    panel.style.display = isHidden ? '' : 'none';
+    btn.classList.toggle('active', isHidden);
+  });
+
   const editorTextarea = document.getElementById('editor-content');
   let editorDebounce = null;
   editorTextarea.addEventListener('input', () => {
@@ -56,6 +69,7 @@
     editorDebounce = setTimeout(() => {
       const html = Viewer.render(editorTextarea.value, currentFile ? require('path').dirname(currentFile) : '', currentFile || '');
       document.getElementById('markdown-content').innerHTML = html;
+      if (typeof Outline !== 'undefined') Outline.update();
     }, 300);
   });
 
@@ -118,6 +132,7 @@
     document.getElementById('content-placeholder').style.display = 'flex';
     document.getElementById('content-header').style.display = 'none';
     document.getElementById('markdown-content').innerHTML = '';
+    if (typeof Outline !== 'undefined') Outline.clear();
 
     // Scan directory and render tree
     const tree = await window.api.scanDirectory(folderPath);
@@ -169,9 +184,15 @@
     // Scroll to top
     document.getElementById('markdown-content').scrollTop = 0;
 
+    // Update outline
+    if (typeof Outline !== 'undefined') {
+      setTimeout(() => Outline.update(), 100);
+    }
+
     // Update editor textarea if open
     if (isEditorOpen) {
       document.getElementById('editor-content').value = rawContent;
+      document.getElementById('editor-content').scrollTop = 0;
     }
     isUnsaved = false;
     document.getElementById('unsaved-indicator').style.display = 'none';
@@ -272,8 +293,12 @@
     contentBody.classList.add('editing');
     document.getElementById('btn-toggle-edit').classList.add('editing');
     document.getElementById('btn-save-file').classList.toggle('disabled', !isUnsaved);
-    document.getElementById('editor-content').value = rawContent;
-    document.getElementById('editor-content').focus();
+    const editorEl = document.getElementById('editor-content');
+    editorEl.value = rawContent;
+    // Scroll both panels to top
+    editorEl.scrollTop = 0;
+    document.getElementById('markdown-content').scrollTop = 0;
+    editorEl.focus();
   }
 
   function closeEditor() {
@@ -364,6 +389,34 @@
       handle.classList.remove('resizing');
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+    });
+  })();
+
+  // ── Sync scroll (viewer ↔ editor) ──
+
+  (() => {
+    const viewer = document.getElementById('markdown-content');
+    const editor = document.getElementById('editor-content');
+
+    viewer.addEventListener('scroll', () => {
+      // Always update outline highlight on scroll
+      if (typeof Outline !== 'undefined') Outline.syncWithScroll();
+      // Sync to editor only when editing
+      if (syncScrolling || !isEditorOpen) return;
+      syncScrolling = true;
+      const maxScroll = viewer.scrollHeight - viewer.clientHeight;
+      const ratio = maxScroll > 0 ? viewer.scrollTop / maxScroll : 0;
+      editor.scrollTop = ratio * (editor.scrollHeight - editor.clientHeight);
+      requestAnimationFrame(() => { syncScrolling = false; });
+    });
+
+    editor.addEventListener('scroll', () => {
+      if (syncScrolling || !isEditorOpen) return;
+      syncScrolling = true;
+      const maxScroll = editor.scrollHeight - editor.clientHeight;
+      const ratio = maxScroll > 0 ? editor.scrollTop / maxScroll : 0;
+      viewer.scrollTop = ratio * (viewer.scrollHeight - viewer.clientHeight);
+      requestAnimationFrame(() => { syncScrolling = false; });
     });
   })();
 
