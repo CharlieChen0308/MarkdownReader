@@ -669,6 +669,29 @@ html, body {
   gap: 4px;
 }
 
+.btn-back {
+  background: none;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.btn-back:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+
+.btn-back:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .content-file-path {
   color: var(--text-muted);
   overflow: hidden;
@@ -712,6 +735,20 @@ html, body {
   max-width: 80ch;
   overflow-wrap: break-word;
   word-wrap: break-word;
+}
+
+/* HTML preview: iframe fills container, remove padding/max-width constraints */
+.markdown-content:has(.html-preview-iframe) {
+  padding: 0;
+  max-width: none;
+  overflow: hidden;
+}
+
+.html-preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
 }
 
 /* When editor is open, remove max-width constraint */
@@ -962,12 +999,12 @@ html, body {
   margin: 20px 0;
 }
 
-.markdown-content input[type="checkbox"] {
+.markdown-content .task-checkbox {
   margin-right: 6px;
-}
-
-.markdown-content .task-check {
-  font-size: 14px;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: #22c55e;
   vertical-align: middle;
 }
 

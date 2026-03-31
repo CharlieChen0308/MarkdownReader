@@ -70,23 +70,24 @@ const Viewer = (() => {
     tryInit();
   }
 
-  // Simple checkbox plugin for task lists
+  // Interactive checkbox plugin for task lists
   function checkboxPlugin(md) {
     md.core.ruler.after('inline', 'checkbox', (state) => {
       for (const token of state.tokens) {
         if (token.type === 'inline' && token.children) {
+          const line = token.map ? token.map[0] : -1;
           for (const child of token.children) {
             if (child.type === 'text') {
               if (child.content.startsWith('[ ] ')) {
                 child.content = child.content.slice(4);
                 const checkbox = new state.Token('html_inline', '', 0);
-                checkbox.content = '<input type="checkbox" disabled> ';
+                checkbox.content = `<input type="checkbox" class="task-checkbox" data-line="${line}"> `;
                 token.children.splice(token.children.indexOf(child), 0, checkbox);
                 break;
               } else if (child.content.startsWith('[x] ') || child.content.startsWith('[X] ')) {
                 child.content = child.content.slice(4);
                 const checkbox = new state.Token('html_inline', '', 0);
-                checkbox.content = '<span class="task-check done">✅</span> ';
+                checkbox.content = `<input type="checkbox" class="task-checkbox" data-line="${line}" checked> `;
                 token.children.splice(token.children.indexOf(child), 0, checkbox);
                 break;
               }

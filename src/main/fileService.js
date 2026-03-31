@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SUPPORTED_EXTENSIONS = ['.md', '.txt'];
+const SUPPORTED_EXTENSIONS = ['.md', '.txt', '.html', '.htm'];
 
 // File watcher
 let watcher = null;
