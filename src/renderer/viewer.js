@@ -16,6 +16,7 @@ const Viewer = (() => {
       html: true,
       linkify: true,
       typographer: true,
+      breaks: true,
       highlight: (str, lang) => {
         // Mermaid blocks: render as div placeholder (not code)
         if (lang === 'mermaid') {

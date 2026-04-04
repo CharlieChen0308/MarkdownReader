@@ -35,6 +35,13 @@ window.api = {
   onTerminalData: (cb) => ipcRenderer.on('terminal-data', (_e, id, data) => cb(id, data)),
   onTerminalExit: (cb) => ipcRenderer.on('terminal-exit', (_e, id) => cb(id)),
 
+  // File context menu
+  copyFileToClipboard: (filePath) => ipcRenderer.invoke('copy-file-to-clipboard', filePath),
+  copyPathToClipboard: (filePath) => ipcRenderer.invoke('copy-path-to-clipboard', filePath),
+  showInExplorer: (filePath) => ipcRenderer.invoke('show-in-explorer', filePath),
+  openInDefaultApp: (filePath) => ipcRenderer.invoke('open-in-default-app', filePath),
+  startDrag: (filePath) => ipcRenderer.send('start-drag', filePath),
+
   // Menu state sync: renderer → main
   updateRecentFolders: (folders) => ipcRenderer.send('update-recent-folders', folders),
   updateCurrentFile: (filePath) => ipcRenderer.send('update-current-file', filePath),

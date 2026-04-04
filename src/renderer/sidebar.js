@@ -208,9 +208,23 @@ const Sidebar = (() => {
         const fileIcon = item.name.toLowerCase().endsWith('.txt') ? '📝' : '📄';
         fileEl.innerHTML = `<span class="icon">${fileIcon}</span><span class="name">${escapeHtml(item.name)}</span>`;
 
+        // Drag to external apps (Explorer, etc.)
+        fileEl.draggable = true;
+        fileEl.addEventListener('dragstart', (e) => {
+          e.preventDefault();
+          window.api.startDrag(item.path);
+        });
+
         fileEl.addEventListener('click', (e) => {
           e.stopPropagation();
           selectFile(item.path);
+        });
+
+        // Right-click context menu
+        fileEl.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          showFileContextMenu(item.path, item.name, e);
         });
 
         fragment.appendChild(fileEl);
@@ -332,6 +346,105 @@ const Sidebar = (() => {
         document.body.style.userSelect = '';
       }
     });
+  }
+
+  // ── File Context Menu ──
+
+  function showFileContextMenu(filePath, fileName, event) {
+    // Remove any existing context menu
+    removeContextMenu();
+
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.innerHTML = `
+      <div class="context-menu-item" data-action="copy-file">📋 複製檔案</div>
+      <div class="context-menu-item" data-action="copy-path">📎 複製檔案路徑</div>
+      <div class="context-menu-item" data-action="copy-name">📝 複製檔案名稱</div>
+      <div class="context-menu-separator"></div>
+      <div class="context-menu-item" data-action="show-in-explorer">📂 在檔案總管中顯示</div>
+      <div class="context-menu-item" data-action="open-default">🔗 以預設程式開啟</div>
+    `;
+
+    // Position the menu
+    menu.style.left = event.clientX + 'px';
+    menu.style.top = event.clientY + 'px';
+    document.body.appendChild(menu);
+
+    // Adjust position if menu goes off screen
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      menu.style.left = (event.clientX - rect.width) + 'px';
+    }
+    if (rect.bottom > window.innerHeight) {
+      menu.style.top = (event.clientY - rect.height) + 'px';
+    }
+
+    // Handle menu clicks
+    menu.addEventListener('click', async (e) => {
+      const item = e.target.closest('.context-menu-item');
+      if (!item) return;
+      const action = item.dataset.action;
+
+      switch (action) {
+        case 'copy-file':
+          const ok = await window.api.copyFileToClipboard(filePath);
+          showToast(ok ? '已複製檔案' : '複製檔案失敗');
+          break;
+        case 'copy-path':
+          await window.api.copyPathToClipboard(filePath);
+          showToast('已複製路徑');
+          break;
+        case 'copy-name':
+          await window.api.copyPathToClipboard(fileName);
+          showToast('已複製檔案名稱');
+          break;
+        case 'show-in-explorer':
+          await window.api.showInExplorer(filePath);
+          break;
+        case 'open-default':
+          await window.api.openInDefaultApp(filePath);
+          break;
+      }
+      removeContextMenu();
+    });
+
+    // Close menu on click outside or Escape
+    const closeHandler = (e) => {
+      if (!menu.contains(e.target)) {
+        removeContextMenu();
+        document.removeEventListener('click', closeHandler);
+      }
+    };
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        removeContextMenu();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    // Use setTimeout to avoid immediate close from the same right-click
+    setTimeout(() => {
+      document.addEventListener('click', closeHandler);
+      document.addEventListener('keydown', escHandler);
+    }, 0);
+  }
+
+  function removeContextMenu() {
+    const existing = document.querySelector('.context-menu');
+    if (existing) existing.remove();
+  }
+
+  function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast-message';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    // Trigger reflow for animation
+    toast.offsetHeight;
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 1500);
   }
 
   function escapeHtml(text) {
