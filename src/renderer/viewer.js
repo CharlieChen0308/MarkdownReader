@@ -125,10 +125,13 @@ const Viewer = (() => {
     // Resolve relative image paths to local-file protocol
     if (fileDir) {
       html = html.replace(
-        /(<img\s+[^>]*src=")(?!https?:\/\/|data:|local-file:)([^"]+)(")/g,
+        /(<img\s+[^>]*src=")(?!https?:\/\/|data:|local-file:|file:)([^"]+)(")/g,
         (match, prefix, src, suffix) => {
-          const resolved = fileDir.replace(/\\/g, '/') + '/' + src;
-          return `${prefix}local-file://${resolved}${suffix}`;
+          const resolved = resolveLocalImagePath(fileDir, src);
+          // Encode each segment (keeps '/' intact, encodes ':' etc.)
+          const encoded = resolved.split('/').map((seg) => encodeURIComponent(seg)).join('/');
+          // Triple-slash form avoids `C:` being parsed as host:port
+          return `${prefix}local-file:///${encoded}${suffix}`;
         }
       );
     }
@@ -319,6 +322,25 @@ const Viewer = (() => {
         }
       }
     }
+  }
+
+  /**
+   * Resolve `./foo` and `../foo` relative to fileDir, return forward-slash path
+   */
+  function resolveLocalImagePath(fileDir, src) {
+    const baseParts = fileDir.replace(/\\/g, '/').split('/').filter(Boolean);
+    const relParts = src.replace(/\\/g, '/').split('/');
+    // Preserve Windows drive letter segment ("C:") if present
+    const isWinDrive = /^[A-Za-z]:$/.test(baseParts[0] || '');
+    for (const p of relParts) {
+      if (!p || p === '.') continue;
+      if (p === '..') {
+        if (baseParts.length > (isWinDrive ? 1 : 0)) baseParts.pop();
+      } else {
+        baseParts.push(p);
+      }
+    }
+    return baseParts.join('/');
   }
 
   function escapeHtml(text) {

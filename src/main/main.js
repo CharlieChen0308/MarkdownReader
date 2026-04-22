@@ -25,10 +25,18 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 
-  // Register custom protocol for local images
+  // Register custom protocol for local images (triple-slash form: local-file:///C%3A/...)
   protocol.registerFileProtocol('local-file', (request, callback) => {
-    const filePath = decodeURIComponent(request.url.replace('local-file://', ''));
-    callback({ path: filePath });
+    try {
+      const u = new URL(request.url);
+      let filePath = decodeURIComponent(u.pathname);
+      // Strip leading slash before Windows drive letter: "/C:/..." -> "C:/..."
+      if (/^\/[A-Za-z]:\//.test(filePath)) filePath = filePath.substring(1);
+      callback({ path: filePath });
+    } catch (err) {
+      console.error('local-file protocol error:', err, request.url);
+      callback({ error: -6 }); // FILE_NOT_FOUND
+    }
   });
 
   // Init menu after window is ready
