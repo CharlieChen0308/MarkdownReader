@@ -1826,3 +1826,64 @@ html, body {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* === Milkdown Crepe integration === */
+
+/* When Milkdown is mounted, let it use full width (no 80ch constraint) */
+.markdown-content:has(.milkdown) {
+  max-width: none;
+  padding: 0;
+}
+
+.milkdown {
+  height: 100%;
+  min-height: 100%;
+}
+
+.milkdown .ProseMirror {
+  padding: 24px 32px 48px;
+  max-width: none;
+  min-height: 100%;
+  cursor: text;
+  /* Restore visible caret (Milkdown default virtual cursor is red & only on focus) */
+  caret-color: var(--accent, #1967d2);
+}
+
+/* Force virtual cursor visible always, not just on focus */
+.milkdown .ProseMirror {
+  --prosemirror-virtual-cursor-color: var(--accent, #1967d2);
+}
+
+/* Mermaid preview inside code block */
+.mermaid-preview {
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+  background: var(--bg-secondary, #f6f8fa);
+  border-radius: 6px;
+}
+
+.mermaid-preview svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-error {
+  padding: 12px;
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #b91c1c;
+}
+
+.mermaid-error .mermaid-error-msg {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.mermaid-error pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+  color: #7f1d1d;
+}
