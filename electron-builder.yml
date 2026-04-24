@@ -16,4 +16,4 @@ win:
   signAndEditExecutable: false
   icon: null
 portable:
-  artifactName: MarkdownReader-Portable.exe
+  artifactName: MarkdownReader.exe
