@@ -7,6 +7,36 @@ const MilkdownBridge = (() => {
   let currentDir = '';
   let onUpdate = null;
   let suppressUpdate = false;
+  let mermaidObserver = null;
+
+  /**
+   * Watch for .mermaid-placeholder elements added by renderPreview, render mermaid
+   * SVG directly via DOM manipulation (bypassing Milkdown's DOMPurify.sanitize which
+   * strips SVG <text>/<style>).
+   */
+  function setupMermaidObserver(rootEl) {
+    if (mermaidObserver) mermaidObserver.disconnect();
+    const process = () => {
+      const placeholders = rootEl.querySelectorAll(
+        '.mermaid-placeholder[data-mermaid-code]:not([data-mermaid-rendered])'
+      );
+      for (const ph of placeholders) {
+        ph.setAttribute('data-mermaid-rendered', '1');
+        let code = '';
+        try {
+          code = decodeURIComponent(escape(atob(ph.getAttribute('data-mermaid-code') || '')));
+        } catch { /* ignore */ }
+        if (!code) continue;
+        renderMermaidHtml(code).then((html) => {
+          // Direct innerHTML — bypasses DOMPurify entirely
+          ph.innerHTML = html;
+        });
+      }
+    };
+    mermaidObserver = new MutationObserver(() => process());
+    mermaidObserver.observe(rootEl, { childList: true, subtree: true });
+    process(); // catch any already present
+  }
 
   /**
    * Resolve ./foo and ../foo against fileDir, return forward-slash absolute path
@@ -82,37 +112,51 @@ const MilkdownBridge = (() => {
   let mermaidIdCounter = 0;
   function ensureMermaidInit() {
     if (!window.mermaid || window.__mermaidInited) return;
+    // htmlLabels=false → 用 SVG <text> 而非 <foreignObject><div>
+    // （Milkdown 的 PreviewPanel 會走 DOMPurify.sanitize，foreignObject 內的 HTML 會被剝掉造成空白）
     window.mermaid.initialize({
       startOnLoad: false,
       theme: 'default',
       securityLevel: 'loose',
       fontFamily: '"Microsoft JhengHei", "Noto Sans TC", sans-serif',
-      flowchart: { useMaxWidth: true, htmlLabels: true },
+      flowchart: { useMaxWidth: true, htmlLabels: false },
       sequence: { useMaxWidth: true },
+      class: { htmlLabels: false },
+      state: { htmlLabels: false },
     });
     window.__mermaidInited = true;
   }
 
-  async function renderMermaidInto(container, code) {
-    const tryRender = async () => {
-      if (!window.mermaid) return false;
-      ensureMermaidInit();
-      try {
-        const id = `mermaid-crepe-${mermaidIdCounter++}`;
-        const { svg } = await window.mermaid.render(id, code);
-        container.innerHTML = svg;
-      } catch (err) {
-        const safe = code
-          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        container.innerHTML =
-          `<div class="mermaid-error"><div class="mermaid-error-msg">Mermaid 渲染失敗</div><pre>${safe}</pre></div>`;
-        console.warn('mermaid render error:', err);
-      }
-      return true;
-    };
-    if (!(await tryRender())) {
-      // Mermaid script may still be loading; retry after a beat
-      setTimeout(tryRender, 300);
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /**
+   * Wait for window.mermaid to appear (preload.js loads it asynchronously).
+   */
+  async function waitForMermaid(timeoutMs = 3000) {
+    const t0 = Date.now();
+    while (!window.mermaid && Date.now() - t0 < timeoutMs) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    return !!window.mermaid;
+  }
+
+  /**
+   * Render mermaid code to an HTML string (for Crepe's async applyPreview path).
+   */
+  async function renderMermaidHtml(code) {
+    if (!(await waitForMermaid())) {
+      return `<div class="mermaid-error"><div class="mermaid-error-msg">Mermaid 未載入</div><pre>${esc(code)}</pre></div>`;
+    }
+    ensureMermaidInit();
+    try {
+      const id = `mermaid-crepe-${mermaidIdCounter++}`;
+      const { svg } = await window.mermaid.render(id, code);
+      return `<div class="mermaid-preview">${svg}</div>`;
+    } catch (err) {
+      console.warn('mermaid render error:', err);
+      return `<div class="mermaid-error"><div class="mermaid-error-msg">Mermaid 渲染失敗</div><pre>${esc(code)}</pre></div>`;
     }
   }
 
@@ -141,12 +185,14 @@ const MilkdownBridge = (() => {
           renderPreview: (language, content) => {
             if (!language || language.toLowerCase() !== 'mermaid') return null;
             if (!content || !content.trim()) return null;
-            const container = document.createElement('div');
-            container.className = 'mermaid-preview';
-            renderMermaidInto(container, content);
-            return container;
+            // 回傳 placeholder 讓 MutationObserver 直接注入 SVG（繞過 DOMPurify，
+            // 否則 sanitize 會剝掉 SVG <text>/<style> 導致框有字沒）
+            const encoded = btoa(unescape(encodeURIComponent(content)));
+            return `<div class="mermaid-placeholder" data-mermaid-code="${encoded}"></div>`;
           },
           previewLabel: () => '圖表預覽',
+          // mermaid 預設直接顯示渲染結果；非 mermaid 的 renderPreview 回 null，此旗標對它們不影響
+          previewOnlyByDefault: true,
         },
       },
     });
@@ -184,10 +230,17 @@ const MilkdownBridge = (() => {
     // Allow updates after the initial parse settles
     setTimeout(() => { suppressUpdate = false; }, 100);
 
+    // Start mermaid placeholder observer
+    setupMermaidObserver(rootEl);
+
     return crepe;
   }
 
   async function destroy() {
+    if (mermaidObserver) {
+      mermaidObserver.disconnect();
+      mermaidObserver = null;
+    }
     if (!crepe) return;
     try {
       await crepe.destroy();
