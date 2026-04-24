@@ -24,7 +24,7 @@
   let syncScrolling = false;
 
   // Init modules
-  Viewer.init();
+  Viewer.init(); // kept for .txt plain-text fallback
   const folderSelectHandler = (folderPath) => loadFolder(folderPath);
   folderSelectHandler._getCurrentFolder = () => currentFolder;
   Sidebar.init(onFileSelected, folderSelectHandler);
@@ -56,20 +56,9 @@
   document.getElementById('btn-close-editor').addEventListener('click', closeEditor);
   document.getElementById('btn-save-file').addEventListener('click', saveFile);
 
+  // Right panel is now a read-only source view (Milkdown WYSIWYG is in #markdown-content)
   const editorTextarea = document.getElementById('editor-content');
-  let editorDebounce = null;
-  editorTextarea.addEventListener('input', () => {
-    isUnsaved = true;
-    document.getElementById('unsaved-indicator').style.display = '';
-    document.getElementById('btn-save-file').classList.remove('disabled');
-    // Debounced live preview
-    clearTimeout(editorDebounce);
-    editorDebounce = setTimeout(() => {
-      const html = Viewer.render(editorTextarea.value, currentFile ? require('path').dirname(currentFile) : '', currentFile || '');
-      document.getElementById('markdown-content').innerHTML = html;
-      if (typeof Outline !== 'undefined') Outline.update();
-    }, 300);
-  });
+  editorTextarea.readOnly = true;
 
   // Ctrl+S to save, Ctrl+Shift+E to toggle editor
   document.addEventListener('keydown', (e) => {
@@ -219,10 +208,12 @@
     document.getElementById('content-file-path').textContent = filePath;
 
     const isHtmlFile = filePath && /\.html?$/i.test(filePath);
+    const isMarkdownFile = filePath && /\.(md|markdown)$/i.test(filePath);
     const markdownEl = document.getElementById('markdown-content');
 
     if (isHtmlFile) {
       // Render HTML in sandboxed iframe
+      await MilkdownBridge.destroy();
       const baseHref = result.dir.replace(/\\/g, '/');
       markdownEl.innerHTML = '';
       const iframe = document.createElement('iframe');
@@ -230,13 +221,25 @@
       iframe.sandbox = 'allow-same-origin';
       iframe.srcdoc = `<!DOCTYPE html><html><head><base href="file:///${baseHref}/"><meta charset="UTF-8"></head><body>${result.content}</body></html>`;
       markdownEl.appendChild(iframe);
-
-      // Disable editor for HTML preview
-      if (isEditorOpen) closeEditor();
       document.getElementById('btn-toggle-edit').style.display = 'none';
-    } else {
+    } else if (isMarkdownFile) {
       document.getElementById('btn-toggle-edit').style.display = '';
-      // Render content (markdown or plain text)
+      markdownEl.innerHTML = '';
+      await MilkdownBridge.mount(markdownEl, result.content, result.dir, {
+        onMarkdownUpdate: (sourceMd) => {
+          rawContent = sourceMd;
+          isUnsaved = true;
+          document.getElementById('unsaved-indicator').style.display = '';
+          document.getElementById('btn-save-file').classList.remove('disabled');
+          if (isEditorOpen) editorTextarea.value = sourceMd;
+          if (typeof Outline !== 'undefined') Outline.update();
+        },
+        onLinkClick: (href) => handleInternalLink(href, result.dir),
+      });
+    } else {
+      // Plain text fallback (.txt etc.)
+      await MilkdownBridge.destroy();
+      document.getElementById('btn-toggle-edit').style.display = '';
       const html = Viewer.render(result.content, result.dir, result.filePath);
       markdownEl.innerHTML = html;
     }
@@ -250,10 +253,10 @@
       else setTimeout(() => Outline.update(), 100);
     }
 
-    // Update editor textarea if open (non-HTML only)
+    // Update source view (right panel) if open
     if (isEditorOpen && !isHtmlFile) {
-      document.getElementById('editor-content').value = rawContent;
-      document.getElementById('editor-content').scrollTop = 0;
+      editorTextarea.value = rawContent;
+      editorTextarea.scrollTop = 0;
     }
     isUnsaved = false;
     document.getElementById('unsaved-indicator').style.display = 'none';
@@ -268,11 +271,32 @@
     // Notify main process (for menu: 複製路徑、在檔案總管開啟)
     window.api.updateCurrentFile(filePath);
 
-    // Bind link click handlers (non-HTML only; iframe handles its own links)
-    if (!isHtmlFile) bindLinkHandlers(result.dir);
+    // Plain-text fallback still needs link/checkbox binding
+    if (!isHtmlFile && !isMarkdownFile) {
+      bindLinkHandlers(result.dir);
+      bindCheckboxHandlers();
+    }
+  }
 
-    // Bind interactive checkbox handlers
-    if (!isHtmlFile) bindCheckboxHandlers();
+  async function handleInternalLink(href, fileDir) {
+    if (!href) return;
+    const decoded = decodeURIComponent(href);
+    if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
+      require('electron').shell.openExternal(decoded);
+      return;
+    }
+    if (/\.(md|markdown|txt|html?)($|#)/i.test(decoded)) {
+      const mdPath = decoded.split('#')[0];
+      const resolved = resolvePath(fileDir, mdPath);
+      onFileSelected(resolved);
+      return;
+    }
+    const dirPath = resolvePath(fileDir, decoded.replace(/\/$/, ''));
+    const target = await window.api.resolveDirectoryLink(dirPath);
+    if (target) {
+      Sidebar.expandDirectory(dirPath);
+      onFileSelected(target);
+    }
   }
 
   function bindLinkHandlers(fileDir) {
@@ -373,9 +397,14 @@
     if (changedPath === currentNorm && currentFile) {
       const result = await window.api.readFile(currentFile);
       rawContent = result.content;
-      const html = Viewer.render(result.content, result.dir, result.filePath);
-      document.getElementById('markdown-content').innerHTML = html;
-      bindLinkHandlers(result.dir);
+      const isMarkdownFile = /\.(md|markdown)$/i.test(currentFile);
+      if (isMarkdownFile && MilkdownBridge.isMounted()) {
+        await MilkdownBridge.replaceContent(result.content, result.dir);
+      } else if (!/\.html?$/i.test(currentFile)) {
+        const html = Viewer.render(result.content, result.dir, result.filePath);
+        document.getElementById('markdown-content').innerHTML = html;
+        bindLinkHandlers(result.dir);
+      }
       if (isEditorOpen && !isUnsaved) {
         document.getElementById('editor-content').value = rawContent;
       }
@@ -429,7 +458,12 @@
 
   async function saveFile() {
     if (!currentFile || !isUnsaved) return;
-    const content = document.getElementById('editor-content').value;
+    // For md files, get markdown from Crepe (with image URLs converted back to relative paths).
+    // For plain-text fallback, the right textarea holds the content.
+    const isMarkdownFile = /\.(md|markdown)$/i.test(currentFile);
+    const content = isMarkdownFile && MilkdownBridge.isMounted()
+      ? MilkdownBridge.getMarkdown()
+      : document.getElementById('editor-content').value;
     const result = await window.api.writeFile(currentFile, content);
     if (result.success) {
       rawContent = content;

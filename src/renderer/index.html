@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MarkdownReader</title>
+  <link rel="stylesheet" href="milkdown.bundle.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="../../node_modules/xterm/css/xterm.css">
 </head>
@@ -97,7 +98,7 @@
             <button id="btn-forward" class="btn-back" title="前往下一頁 (Alt+→)" disabled>▶</button>
             <span id="content-file-path" class="content-file-path"></span>
             <div class="content-header-actions">
-              <button id="btn-toggle-edit" class="btn-edit" title="編輯模式 (Ctrl+Shift+E)">✏️</button>
+              <button id="btn-toggle-edit" class="btn-edit" title="顯示/隱藏原始碼面板 (Ctrl+Shift+E)">📄</button>
               <button id="btn-bookmark-current" class="btn-bookmark" title="加入書籤">☆</button>
             </div>
           </div>
@@ -108,12 +109,12 @@
             <!-- Editor Panel (right side, hidden by default) -->
             <div id="editor-panel" class="editor-panel" style="display:none;">
               <div class="editor-panel-header">
-                <span>📝 編輯器</span>
+                <span>📄 原始碼 (唯讀)</span>
                 <span id="unsaved-indicator" class="unsaved-indicator" style="display:none;">● 未儲存</span>
                 <button id="btn-save-file" class="btn-save editor-header-right" title="儲存 (Ctrl+S)">💾 儲存</button>
-                <button id="btn-close-editor" class="btn-close" title="收折編輯器">✕</button>
+                <button id="btn-close-editor" class="btn-close" title="收折原始碼面板">✕</button>
               </div>
-              <textarea id="editor-content" class="editor-content" spellcheck="false"></textarea>
+              <textarea id="editor-content" class="editor-content" spellcheck="false" readonly></textarea>
             </div>
           </div>
         </div>
@@ -268,6 +269,8 @@
     </div>
   </div>
 
+  <script src="milkdown.bundle.js"></script>
+  <script src="milkdown-bridge.js"></script>
   <script src="viewer.js"></script>
   <script src="sidebar.js"></script>
   <script src="search.js"></script>

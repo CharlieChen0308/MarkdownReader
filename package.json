@@ -4,10 +4,11 @@
   "description": "TireMaster Markdown 文件閱讀器",
   "main": "src/main/main.js",
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder",
-    "build:portable": "electron-builder --win portable",
-    "build:nsis": "electron-builder --win nsis",
+    "start": "npm run build:milkdown && electron .",
+    "build": "npm run build:milkdown && electron-builder",
+    "build:portable": "npm run build:milkdown && electron-builder --win portable",
+    "build:nsis": "npm run build:milkdown && electron-builder --win nsis",
+    "build:milkdown": "esbuild src/renderer/milkdown-entry.js --bundle --outfile=src/renderer/milkdown.bundle.js --format=iife --platform=browser --target=chrome120 --loader:.woff=dataurl --loader:.woff2=dataurl --loader:.ttf=dataurl --loader:.svg=dataurl --log-level=info",
     "rebuild": "electron-rebuild"
   },
   "author": "TireMaster IT",
@@ -16,9 +17,12 @@
     "@electron/rebuild": "^4.0.3",
     "electron": "^33.0.0",
     "electron-builder": "^25.1.8",
-    "electron-rebuild": "^3.2.9"
+    "electron-rebuild": "^3.2.9",
+    "esbuild": "^0.28.0"
   },
   "dependencies": {
+    "@milkdown/crepe": "^7.20.0",
+    "@milkdown/kit": "^7.20.0",
     "highlight.js": "^11.11.0",
     "markdown-it": "^14.1.0",
     "mermaid": "^11.13.0",

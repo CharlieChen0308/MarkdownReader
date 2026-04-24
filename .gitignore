@@ -2,3 +2,7 @@ node_modules/
 dist/
 .DS_Store
 *.log
+
+# Built by esbuild (npm start/build re-generates)
+src/renderer/milkdown.bundle.js
+src/renderer/milkdown.bundle.css
